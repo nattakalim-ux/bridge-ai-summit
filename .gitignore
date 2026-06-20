@@ -1,0 +1,21 @@
+# Raw NHANES data (large binaries — re-download from CDC)
+Data/nhanes_raw/
+Data/nhanes_2013_2014/
+
+# Old datasets not needed for Phase 2
+Data/mortality_nhanes_complete.csv
+Data/phenoage_nhanes_complete.csv
+Data/NHANES_2007_2008_MORT.dat
+
+# Trained model binaries (regeneratable by running training scripts)
+Model/*.pkl
+
+# Plots (regeneratable)
+Model/*.png
+Data/*.png
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
