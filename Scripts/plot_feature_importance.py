@@ -1,8 +1,7 @@
 """
-Generate two publication-quality PNGs:
-  1. Model/feature_importance.png  — feature importance for both models
-  2. Model/prediction_scatter.png  — predicted vs actual for PhenoAge +
-                                     predicted probability by outcome for Mortality
+Phase 8: Feature Importance Comparison and Distribution Plots
+Generates publication-quality charts contrasting PhenoAge and Mortality prediction drivers.
+Consumes cleaned datasets derived from Phase 3 processing.
 """
 
 import numpy as np
@@ -14,9 +13,20 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from sklearn.metrics import r2_score, mean_absolute_error
+from sklearn.model_selection import train_test_split
+import os
+import sys
 
-MODEL_DIR = "/Users/ming/Desktop/MDCU/Model"
-DATA_DIR  = "/Users/ming/Desktop/MDCU/Data"
+print("=" * 70)
+print(" PHASE 8: FEATURE IMPORTANCE AND METRIC VISUALIZATION")
+print("=" * 70)
+
+# ── 1. Path Configuration (Absolute Root Alignment) ─────────────────────────
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_DATA_DIR = os.path.join(BASE_DIR, "Data")
+MODEL_DIR = os.path.join(BASE_DIR, "Models")
+
+DATA_PATH = os.path.join(PROJECT_DATA_DIR, "phenoage_completed_phase3.csv")
 
 FEATURES = ["albumin", "creatinine", "glucose", "alp", "crp_mgl",
             "mcv", "rdw", "wbc", "lymph_pct"]
@@ -27,176 +37,123 @@ FEATURE_LABELS = {
     "creatinine": "Creatinine",
     "glucose":    "Glucose",
     "alp":        "ALP",
-    "crp_mgl":   "CRP",
+    "crp_mgl":    "CRP",
     "mcv":        "MCV",
     "rdw":        "RDW",
     "wbc":        "WBC",
     "lymph_pct":  "Lymphocyte %",
 }
 
-GROUP_COLORS = {"young": "#4C9BE8", "middle": "#F4A92B", "old": "#E05C5C"}
+# Verify source dataset availability prior to script execution
+if not os.path.exists(DATA_PATH):
+    print(f"[ERROR] Target input file not found: {DATA_PATH}")
+    print("[STOP] Plotting pipeline halted due to missing upstream assets.")
+    sys.exit(1)
 
-# ── Load models & metadata ────────────────────────────────────────────────────
-mort_base  = joblib.load(f"{MODEL_DIR}/mortality_base_model.pkl")
-mort_ir    = joblib.load(f"{MODEL_DIR}/mortality_ir.pkl")
+# ── 2. Load Models & Metadata ────────────────────────────────────────────────
+MORT_MODEL_PATH = os.path.join(MODEL_DIR, "mortality_base_model.pkl")
+MORT_META_PATH = os.path.join(MODEL_DIR, "mortality_meta.json")
+PHENO_MODEL_PATH = os.path.join(MODEL_DIR, "phenoage_model.pkl")
+PHENO_META_PATH = os.path.join(MODEL_DIR, "model_meta.json")
 
-with open(f"{MODEL_DIR}/mortality_meta.json") as f:
+if not os.path.exists(MORT_MODEL_PATH) or not os.path.exists(MORT_META_PATH):
+    print(f"[ERROR] Core mortality assets missing inside: {MODEL_DIR}")
+    print("[STOP] Please ensure Phase 6 has run successfully before executing Phase 8.")
+    sys.exit(1)
+
+mort_base = joblib.load(MORT_MODEL_PATH)
+with open(MORT_META_PATH, "r") as f:
     mort_meta = json.load(f)
-with open(f"{MODEL_DIR}/model_meta.json") as f:
-    bio_meta = json.load(f)
 
-bio_models = {g: joblib.load(f"{MODEL_DIR}/phenoage_model_{g}.pkl")
-              for g in ["young", "middle", "old"]}
+# Optional handling for PhenoAge regressor assets
+pheno_available = os.path.exists(PHENO_MODEL_PATH) and os.path.exists(PHENO_META_PATH)
+if pheno_available:
+    pheno_base = joblib.load(PHENO_MODEL_PATH)
+    with open(PHENO_META_PATH, "r") as f:
+        pheno_meta = json.load(f)
+    print("[INFO] Both Mortality and PhenoAge regression assets loaded successfully.")
+else:
+    print("[WARNING] PhenoAge regression assets missing. Defaulting focus to Mortality arrays.")
 
-AGE_GROUPS = {"young": (0, 45), "middle": (45, 65), "old": (65, 999)}
+# ── 3. Data Processing & Replication Splits ─────────────────────────────────
+df = pd.read_csv(DATA_PATH)
+X = df[FEATURES].copy()
+y_mort = df["died_followup"]
 
-# ── Load & preprocess data ────────────────────────────────────────────────────
-df_mort = pd.read_csv(f"{DATA_DIR}/mortality_nhanes_complete.csv")
-df_bio  = pd.read_csv(f"{DATA_DIR}/phenoage_nhanes_complete.csv")
+X[list(LOG_FEATURES)] = np.log1p(X[list(LOG_FEATURES)])
 
-def preprocess(df):
-    X = df[FEATURES].copy()
-    for f in LOG_FEATURES:
-        X[f] = np.log1p(X[f])
-    return X
+# Replicate identical partition splits mapping back to model states
+_, X_test, _, y_test_mort = train_test_split(
+    X, y_mort, test_size=0.2, random_state=42, stratify=y_mort
+)
+prob_mort = mort_base.predict_proba(X_test)[:, 1]
 
-X_mort = preprocess(df_mort)
-X_bio  = preprocess(df_bio)
+# ── 4. Chart 1: Feature Importance Contrast Plot ────────────────────────────
+fig1, ax = plt.subplots(figsize=(9, 6))
 
+mort_imp = mort_base.feature_importances_
+y_pos = np.arange(len(FEATURES))
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# FIGURE 1 — Feature Importance
-# ═══════════════════════════════════════════════════════════════════════════════
-mort_imp = dict(zip(FEATURES, mort_base.feature_importances_))
+if pheno_available:
+    pheno_imp = pheno_base.feature_importances_
+    width = 0.35
+    ax.barh(y_pos - width/2, mort_imp, width, label="Mortality Risk Classifier", color="tomato", alpha=0.85)
+    ax.barh(y_pos + width/2, pheno_imp, width, label="PhenoAge Regressor", color="steelblue", alpha=0.85)
+else:
+    ax.barh(y_pos, mort_imp, 0.5, label="Mortality Risk Classifier", color="tomato", alpha=0.85)
 
-# Aggregate bio-age importance across 3 group models (weighted by n_train)
-bio_imp_agg = np.zeros(len(FEATURES))
-total_n = sum(bio_meta["group_results"][g]["n_train"] for g in AGE_GROUPS)
-for g in AGE_GROUPS:
-    w = bio_meta["group_results"][g]["n_train"] / total_n
-    bio_imp_agg += w * bio_models[g].feature_importances_
-bio_imp = dict(zip(FEATURES, bio_imp_agg))
-
-labels = [FEATURE_LABELS[f] for f in FEATURES]
-
-fig, axes = plt.subplots(1, 2, figsize=(13, 5))
-fig.suptitle("Feature Importance", fontsize=15, fontweight="bold", y=1.01)
-
-for ax, imp_dict, title, color in [
-    (axes[0], mort_imp, "Mortality Risk Model\n(XGBoost — 10-yr death)", "#E05C5C"),
-    (axes[1], bio_imp,  "PhenoAge Model\n(Stratified Ensemble — weighted avg)", "#4C9BE8"),
-]:
-    vals   = [imp_dict[f] for f in FEATURES]
-    order  = np.argsort(vals)
-    y_pos  = np.arange(len(FEATURES))
-
-    bars = ax.barh(y_pos, [vals[i] for i in order],
-                   color=color, alpha=0.85, edgecolor="white", linewidth=0.5)
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels([labels[i] for i in order], fontsize=10)
-    ax.set_xlabel("Feature Importance (F-score)", fontsize=9)
-    ax.set_title(title, fontsize=11, fontweight="bold")
-    ax.spines[["top", "right"]].set_visible(False)
-
-    # Value labels
-    for bar, idx in zip(bars, order):
-        v = vals[idx]
-        ax.text(v + 0.002, bar.get_y() + bar.get_height() / 2,
-                f"{v:.3f}", va="center", fontsize=8.5, color="#333333")
-
-    ax.set_xlim(0, max(vals) * 1.22)
+ax.set_yticks(y_pos)
+ax.set_yticklabels([FEATURE_LABELS[f] for f in FEATURES], fontsize=11)
+ax.invert_yaxis()  # Top-down feature layout
+ax.set_xlabel("Relative Feature Importance (Gini Multi-split Fractional Weight)", fontsize=11)
+ax.set_title("Biomarker Importance Comparison Matrix", fontsize=13, fontweight="bold")
+ax.legend(loc="lower right")
+ax.grid(True, axis="x", alpha=0.2)
 
 plt.tight_layout()
-plt.savefig(f"{MODEL_DIR}/feature_importance.png", dpi=160, bbox_inches="tight")
-plt.close()
-print("Saved → feature_importance.png")
+OUT_IMPORTANCE_PATH = os.path.join(MODEL_DIR, "feature_importance_comparison.png")
+plt.savefig(OUT_IMPORTANCE_PATH, dpi=150)
+print(f"[EXPORT] Feature importance comparison layout saved to: {OUT_IMPORTANCE_PATH}")
 
+# ── 5. Chart 2: Outcome Probability Distribution Matrix ─────────────────────
+fig2, ax_mort = plt.subplots(figsize=(6, 5))
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# FIGURE 2 — Prediction Scatter
-# ═══════════════════════════════════════════════════════════════════════════════
-fig = plt.figure(figsize=(14, 6))
-gs  = gridspec.GridSpec(1, 2, figure=fig, wspace=0.35)
+probs = [prob_mort[y_test_mort == 0], prob_mort[y_test_mort == 1]]
+colors = ["#4682B4", "#FF6347"]
+labels = ["Survived", "Died"]
 
-# ── Panel A: PhenoAge predicted vs actual ─────────────────────────────────────
-ax_bio = fig.add_subplot(gs[0])
-
-y_actual = df_bio["phenoage"].values
-y_pred   = np.zeros(len(df_bio))
-group_col = np.full(len(df_bio), "", dtype=object)
-
-for g, (lo, hi) in AGE_GROUPS.items():
-    mask = (df_bio["age"] >= lo) & (df_bio["age"] < hi)
-    if mask.sum() > 0:
-        y_pred[mask]   = bio_models[g].predict(X_bio[mask])
-        group_col[mask] = g
-
-r2  = r2_score(y_actual, y_pred)
-mae = mean_absolute_error(y_actual, y_pred)
-
-for g, (lo, hi) in AGE_GROUPS.items():
-    mask = group_col == g
-    ax_bio.scatter(y_actual[mask], y_pred[mask],
-                   color=GROUP_COLORS[g], alpha=0.25, s=6, label=g.capitalize(),
-                   rasterized=True)
-
-lims = [min(y_actual.min(), y_pred.min()) - 2, max(y_actual.max(), y_pred.max()) + 2]
-ax_bio.plot(lims, lims, "k--", linewidth=1.2, alpha=0.6, label="Perfect (y=x)")
-ax_bio.set_xlim(lims); ax_bio.set_ylim(lims)
-ax_bio.set_xlabel("Actual PhenoAge (years)", fontsize=10)
-ax_bio.set_ylabel("Predicted PhenoAge (years)", fontsize=10)
-ax_bio.set_title(f"PhenoAge — Predicted vs Actual\nR²={r2:.3f}  MAE={mae:.2f} yrs",
-                 fontsize=11, fontweight="bold")
-ax_bio.legend(fontsize=8.5, markerscale=2)
-ax_bio.spines[["top", "right"]].set_visible(False)
-ax_bio.text(0.04, 0.94, f"n = {len(df_bio):,}", transform=ax_bio.transAxes,
-            fontsize=8, color="#555555")
-
-# ── Panel B: Mortality predicted probability by outcome ───────────────────────
-ax_mort = fig.add_subplot(gs[1])
-
-y_true  = df_mort["died_10yr"].values
-raw_prob = mort_base.predict_proba(X_mort)[:, 1]
-cal_prob = mort_ir.predict(raw_prob)
-
-alive_prob = cal_prob[y_true == 0]
-dead_prob  = cal_prob[y_true == 1]
-
-# Jitter + scatter
-rng = np.random.default_rng(42)
-for probs, x_center, color, label in [
-    (alive_prob, 0, "#4C9BE8", f"Survived  (n={len(alive_prob):,})"),
-    (dead_prob,  1, "#E05C5C", f"Died  (n={len(dead_prob):,})"),
-]:
-    jitter = rng.uniform(-0.18, 0.18, len(probs))
-    ax_mort.scatter(x_center + jitter, probs,
-                    color=color, alpha=0.18, s=5, rasterized=True)
-    ax_mort.boxplot(probs, positions=[x_center], widths=0.25,
+for x_center, (prob, color, label) in enumerate(zip(probs, colors, labels)):
+    # Jitter scatter overlay to expose distribution density patterns
+    jitter = np.random.normal(x_center, 0.04, size=len(prob))
+    ax_mort.scatter(jitter, prob, color=color, alpha=0.15, s=6, rasterized=True)
+    
+    # Standardized clinical boxplot overlay
+    ax_mort.boxplot(prob, positions=[x_center], widths=0.25,
                     patch_artist=True,
-                    boxprops=dict(facecolor=color, alpha=0.55),
+                    boxprops=dict(facecolor=color, alpha=0.55, edgecolor=color),
                     medianprops=dict(color="white", linewidth=2),
                     whiskerprops=dict(color=color),
                     capprops=dict(color=color),
                     flierprops=dict(marker="", alpha=0))
     ax_mort.plot([], [], color=color, linewidth=6, alpha=0.7, label=label)
 
-# Risk threshold lines
-for thresh, lbl in [(0.10, "Low / Moderate"), (0.25, "Moderate / High")]:
+# Render customized decision and risk thresholds
+risk_thresholds = [0.10, 0.25]
+for thresh, lbl in [(risk_thresholds[0], "Low / Moderate"), (risk_thresholds[1], "Moderate / High")]:
     ax_mort.axhline(thresh, color="#888888", linestyle=":", linewidth=1.2)
-    ax_mort.text(1.22, thresh + 0.005, lbl, fontsize=7.5, color="#666666", va="bottom")
+    ax_mort.text(1.22, thresh + 0.005, lbl, fontsize=8, color="#666666", va="bottom")
 
 ax_mort.set_xticks([0, 1])
-ax_mort.set_xticklabels(["Survived", "Died"], fontsize=10)
-ax_mort.set_ylabel("Predicted 10-yr Mortality Probability", fontsize=10)
-auc = mort_meta["metrics"]["AUC_ROC"]
-ax_mort.set_title(f"Mortality Model — Predicted Probability by Outcome\nAUC={auc:.3f}",
-                  fontsize=11, fontweight="bold")
-ax_mort.set_ylim(-0.03, 1.05)
-ax_mort.set_xlim(-0.5, 1.7)
-ax_mort.legend(fontsize=8.5, loc="upper left")
-ax_mort.spines[["top", "right"]].set_visible(False)
+ax_mort.set_xticklabels(["Survived", "Died"], fontsize=11)
+ax_mort.set_ylabel("Predicted Mortality Probability", fontsize=11)
+auc_val = mort_meta["metrics"]["AUC_ROC"]
+ax_mort.set_title(f"Mortality Model Risk Distribution\n(Test Cohort AUC = {auc_val:.3f})", fontsize=12, fontweight="bold")
+ax_mort.set_xlim(-0.5, 1.5)
+ax_mort.set_ylim(-0.02, 1.02)
+ax_mort.grid(True, axis="y", alpha=0.2)
 
-fig.suptitle("Model Prediction Quality", fontsize=14, fontweight="bold", y=1.02)
-plt.savefig(f"{MODEL_DIR}/prediction_scatter.png", dpi=160, bbox_inches="tight")
-plt.close()
-print("Saved → prediction_scatter.png")
+plt.tight_layout()
+OUT_DIST_PATH = os.path.join(MODEL_DIR, "prediction_distribution_analysis.png")
+plt.savefig(OUT_DIST_PATH, dpi=150)
+print(f"[EXPORT] Probability distribution scatter metrics saved to: {OUT_DIST_PATH}")
+print("=" * 70)

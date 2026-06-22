@@ -19,3 +19,43 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+
+# =============================================================================
+# ADDITIONAL PROJECT ALIGNMENT (ADDED FOR PHASES 3-8)
+# =============================================================================
+# Block the entire Data folder overhead from tracking while keeping source configs
+Data/*
+
+# Specific extensions for generated datasets and backup files
+*.csv
+*.xlsx
+*.xls
+*.xpt
+*.parquet
+*.feather
+*.pkl
+*.joblib
+*.bak
+*.tmp
+
+# Standarized Local Machine Learning Models & Telemetry directory (with 's')
+Models/
+Models/*
+Models/*.pkl
+Models/*.json
+Models/*.png
+
+# Local Evaluation Layout Graphics and PDF Exports
+*.png
+*.jpg
+*.jpeg
+*.pdf
+
+# Virtual Environments & IDE Configuration Meta
+venv/
+.venv/
+env/
+ENV/
+.vscode/
+.idea/
+Thumbs.db

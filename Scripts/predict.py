@@ -6,8 +6,10 @@ Usage: python predict.py
 import joblib
 import json
 import numpy as np
+import os
+from config import MODEL_DIR
 
-MODEL_DIR = "/Users/ming/Desktop/MDCU/Model"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── Load bio-age models (stratified by age group) ────────────────────────────
 with open(f"{MODEL_DIR}/model_meta.json") as f:

@@ -6,8 +6,8 @@ data (standard CRP was dropped after 2009-2010; hs-CRP only reintroduced in
 2015-2016). Pivoted to 2015-2016 (_I suffix) which has HSCRP_I + mortality linkage.
 
 FOLLOW-UP NOTE: 2015-2016 mortality linkage (to Dec 31, 2019) gives max ~61 months
-(~5 years) of follow-up — not 10 years. The died_10yr flag is retained for schema
-compatibility (PERMTH_INT <= 120 is always true for any death in this window), but
+(~5 years) of follow-up — not 10 years. The died_5yr flag is retained for schema
+compatibility (PERMTH_INT <= 60 is always true for any death in this window), but
 the outcome effectively means "died before Dec 31, 2019".
 
 Variable mapping (2015-2016 _I suffix):
@@ -20,11 +20,12 @@ Variable mapping (2015-2016 _I suffix):
 
 import pandas as pd
 import numpy as np
+import os
+from config import DATA_DIR
 
-RAW      = "/Users/ming/Desktop/MDCU/Data/nhanes_2013_2014"
-DATA_DIR = "/Users/ming/Desktop/MDCU/Data"
-
-MORT_PATH = f"{RAW}/NHANES_2015_2016_MORT_2019_PUBLIC.dat"
+BASE_DIR  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW       = os.path.join(BASE_DIR, "Data", "nhanes_raw")
+MORT_PATH = os.path.join(RAW, "NHANES_2015_2016_MORT_2019_PUBLIC.dat")
 
 # ── 1. Parse mortality fixed-width file ──────────────────────────────────────
 print("=" * 60)
@@ -140,22 +141,22 @@ print(f"  After dropping missing labs:  {n3:,}  (removed {n_missing:,} with miss
 print("\n[5/6] Building outcome variables...")
 
 # 10-yr flag (schema-compatible with other files; effectively = MORTSTAT since
-# max follow-up is ~61 months < 120 months)
-df_clean["died_10yr"] = (
-    (df_clean["MORTSTAT"] == "1") & (df_clean["PERMTH_INT"] <= 120)
+# max follow-up is ~61 months)
+df_clean["died_5yr"] = (
+    (df_clean["MORTSTAT"] == "1") & (df_clean["PERMTH_INT"] <= 60)
 ).astype(int)
 
 # All-cause mortality during follow-up (the actually meaningful outcome here)
 df_clean["died_followup"] = (df_clean["MORTSTAT"] == "1").astype(int)
 
-n_dead_10yr    = df_clean["died_10yr"].sum()
+n_dead_10yr    = df_clean["died_5yr"].sum()
 n_dead_followup = df_clean["died_followup"].sum()
 n_total = len(df_clean)
 
-print(f"  died_10yr:     {n_dead_10yr:,} / {n_total:,}  ({100*n_dead_10yr/n_total:.2f}%)")
+print(f"  died_5yr:     {n_dead_10yr:,} / {n_total:,}  ({100*n_dead_10yr/n_total:.2f}%)")
 print(f"  died_followup: {n_dead_followup:,} / {n_total:,}  ({100*n_dead_followup/n_total:.2f}%)")
 print(f"  (Both counts are identical because max PERMTH_INT = "
-      f"{df_clean['PERMTH_INT'].max():.0f} months < 120 months)")
+      f"{df_clean['PERMTH_INT'].max():.0f} months < 60 months)")
 print(f"\n  Follow-up distribution (months):")
 print(f"    min={df_clean['PERMTH_INT'].min():.0f}  median={df_clean['PERMTH_INT'].median():.0f}"
       f"  max={df_clean['PERMTH_INT'].max():.0f}  mean={df_clean['PERMTH_INT'].mean():.1f}")
@@ -198,7 +199,7 @@ print(f"  Age range:        {df_clean['age'].min():.0f}–{df_clean['age'].max()
 
 print("\n  IMPORTANT LIMITATION:")
 print("  Max follow-up is ~61 months (5 years), not 10 years.")
-print("  The 'died_10yr' column is schema-compatible but effectively")
+print("  The 'died_5yr' column is schema-compatible but effectively")
 print("  means 'died before Dec 31, 2019' for this cohort.")
 print("  The AUC comparison between PhenoAge and ML models remains valid.")
 
@@ -207,7 +208,7 @@ if n3 < 1000:
           "Too small for reliable ML training. ***")
 
 # ── 9. Save ───────────────────────────────────────────────────────────────────
-out = f"{DATA_DIR}/merged_nhanes_2015_2016_with_mortality.csv"
+out = os.path.join(BASE_DIR, "Data", "phase1_merged_5yr.csv")
 df_clean.to_csv(out, index=False)
 print(f"\nSaved → {out}")
 print(f"Columns: {list(df_clean.columns)}")
