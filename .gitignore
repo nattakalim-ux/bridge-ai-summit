@@ -46,10 +46,11 @@ Models/*.json
 Models/*.png
 
 # Local Evaluation Layout Graphics and PDF Exports
-*.png
+# (output/ is explicitly unignored below — see end of file)
 *.jpg
 *.jpeg
 *.pdf
+*.png
 
 # Virtual Environments & IDE Configuration Meta
 venv/
@@ -59,3 +60,8 @@ ENV/
 .vscode/
 .idea/
 Thumbs.db
+
+# ── Explicitly allow output/ folder (publication figures + results) ───────────
+!output/
+!output/*.png
+!output/*.csv
