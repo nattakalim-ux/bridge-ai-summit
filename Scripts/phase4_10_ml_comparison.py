@@ -573,7 +573,7 @@ else:
 # ═══════════════════════════════════════════════════════════════════════════════
 from sklearn.metrics import roc_curve
 
-fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+fig, axes = plt.subplots(1, 2, figsize=(14, 6.5))
 
 # Panel A — ROC curves
 ax = axes[0]
@@ -601,25 +601,29 @@ for prob, lbl, col in zip(cal_probs, roc_labels, colors_roc):
     try:
         pt, pp = calibration_curve(y_test, prob, n_bins=5, strategy="quantile")
         brier  = results[lbl]["brier"]
-        ax2.plot(pp, pt, "o-", color=col, linewidth=2, markersize=5,
+        ax2.plot(pp, pt, "o-", color=col, linewidth=2.5, markersize=7,
                  label=f"{lbl} (Brier={brier:.4f})")
         all_pp2.extend(pp); all_pt2.extend(pt)
     except Exception:
         pass
 
-# Zoom to actual data range so the curves fill the panel
+# Zoom to actual data range — equal limits so diagonal is truly 45°
 if all_pp2 and all_pt2:
     ax_max = max(max(all_pp2), max(all_pt2)) * 1.15
-    ax_max = min(round(ax_max, 2), 1.0)
+    ax_max = min(float(f"{ax_max:.2f}"), 1.0)
 else:
     ax_max = 1.0
-ax2.plot([0, ax_max], [0, ax_max], "k--", alpha=0.4, linewidth=1, label="Perfect calibration")
+
+ax2.plot([0, ax_max], [0, ax_max], color="gray", linestyle="--",
+         linewidth=1.5, alpha=0.6, label="Perfect Calibration")
 ax2.set_xlim(0, ax_max)
 ax2.set_ylim(0, ax_max)
-ax2.set_xlabel("Mean predicted probability", fontsize=10)
-ax2.set_ylabel("Fraction of positives", fontsize=10)
+ax2.set_aspect("equal", adjustable="box")
+ax2.set_xlabel("Mean Predicted Probability", fontsize=10)
+ax2.set_ylabel("Fraction of Positives", fontsize=10)
 ax2.set_title("Calibration Curves (after Isotonic Regression)", fontsize=11, fontweight="bold")
-ax2.legend(fontsize=8.5)
+ax2.legend(fontsize=8.5, loc="upper left", framealpha=0.9)
+ax2.grid(True, linestyle="--", alpha=0.4)
 ax2.spines[["top","right"]].set_visible(False)
 
 plt.tight_layout()
