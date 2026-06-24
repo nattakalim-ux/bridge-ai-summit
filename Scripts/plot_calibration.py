@@ -77,18 +77,25 @@ fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
 for i, n_bins in enumerate(bins_to_test):
     ax = axes[i]
-    ax.plot([0, 1], [0, 1], "k--", alpha=0.3, label="Perfect Calibration")
-    
+
     # Base XGBoost Calculation
     pt_b, pp_b = calibration_curve(y_test, prob_base, n_bins=n_bins, strategy="uniform")
     brier_b = brier_score_loss(y_test, prob_base)
-    ax.plot(pp_b, pt_b, "s--", color="steelblue", label=f"Base (Brier={brier_b:.4f})")
-    
+
     # Calibrated XGBoost Calculation
     pt_c, pp_c = calibration_curve(y_test, prob_cal, n_bins=n_bins, strategy="uniform")
     brier_c = brier_score_loss(y_test, prob_cal)
+
+    # Zoom axes to the actual data range so differences are visible
+    max_val = max(pp_b.max(), pp_c.max(), pt_b.max(), pt_c.max()) * 1.15
+    max_val = min(round(max_val, 2), 1.0)
+
+    ax.plot([0, max_val], [0, max_val], "k--", alpha=0.3, label="Perfect Calibration")
+    ax.plot(pp_b, pt_b, "s--", color="steelblue", label=f"Base (Brier={brier_b:.4f})")
     ax.plot(pp_c, pt_c, "o-", color="tomato", label=f"Calibrated (Brier={brier_c:.4f})")
-    
+
+    ax.set_xlim(0, max_val)
+    ax.set_ylim(0, max_val)
     ax.set_xlabel("Mean Predicted Probability")
     ax.set_ylabel("Fraction of Positives")
     ax.set_title(f"Calibration Evaluation (Bins = {n_bins})")
@@ -116,13 +123,25 @@ axes2[0].grid(True, alpha=0.2)
 axes2[0].legend()
 
 # Standardized Reliability Curve (N_BINS=5 Default)
-axes2[1].plot([0, 1], [0, 1], "k--", alpha=0.3, label="Perfect")
+curve_data = {}
 for label, prob, style in [("Base Model", prob_base, ("steelblue", "s--")),
                              ("Calibrated Framework", prob_cal, ("tomato", "o-"))]:
     pt, pp = calibration_curve(y_test, prob, n_bins=5, strategy="uniform")
     br = brier_score_loss(y_test, prob)
+    curve_data[label] = (pt, pp, br, style)
+
+# Zoom to actual data range
+all_pp2 = np.concatenate([v[1] for v in curve_data.values()])
+all_pt2 = np.concatenate([v[0] for v in curve_data.values()])
+max_val2 = max(all_pp2.max(), all_pt2.max()) * 1.15
+max_val2 = min(round(max_val2, 2), 1.0)
+
+axes2[1].plot([0, max_val2], [0, max_val2], "k--", alpha=0.3, label="Perfect")
+for label, (pt, pp, br, style) in curve_data.items():
     axes2[1].plot(pp, pt, style[1], color=style[0], label=f"{label} (Brier={br:.4f})")
 
+axes2[1].set_xlim(0, max_val2)
+axes2[1].set_ylim(0, max_val2)
 axes2[1].set_xlabel("Mean Predicted Probability")
 axes2[1].set_ylabel("Fraction of Positives")
 axes2[1].set_title("Reliability Calibration Curve (Bins = 5)")
