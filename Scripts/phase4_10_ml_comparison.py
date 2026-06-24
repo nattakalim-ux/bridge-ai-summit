@@ -596,16 +596,26 @@ ax.spines[["top","right"]].set_visible(False)
 # Panel B — Calibration curves
 ax2 = axes[1]
 cal_probs  = [prob_levine, prob_en_cal, prob_xgb_cal, prob_rf_cal]  # calibrated for all
+all_pp2, all_pt2 = [], []
 for prob, lbl, col in zip(cal_probs, roc_labels, colors_roc):
     try:
         pt, pp = calibration_curve(y_test, prob, n_bins=5, strategy="quantile")
         brier  = results[lbl]["brier"]
         ax2.plot(pp, pt, "o-", color=col, linewidth=2, markersize=5,
                  label=f"{lbl} (Brier={brier:.4f})")
+        all_pp2.extend(pp); all_pt2.extend(pt)
     except Exception:
         pass
 
-ax2.plot([0,1],[0,1], "k--", alpha=0.4, linewidth=1, label="Perfect calibration")
+# Zoom to actual data range so the curves fill the panel
+if all_pp2 and all_pt2:
+    ax_max = max(max(all_pp2), max(all_pt2)) * 1.15
+    ax_max = min(round(ax_max, 2), 1.0)
+else:
+    ax_max = 1.0
+ax2.plot([0, ax_max], [0, ax_max], "k--", alpha=0.4, linewidth=1, label="Perfect calibration")
+ax2.set_xlim(0, ax_max)
+ax2.set_ylim(0, ax_max)
 ax2.set_xlabel("Mean predicted probability", fontsize=10)
 ax2.set_ylabel("Fraction of positives", fontsize=10)
 ax2.set_title("Calibration Curves (after Isotonic Regression)", fontsize=11, fontweight="bold")
