@@ -1,0 +1,78 @@
+{
+  "mode": "stratified_ensemble",
+  "age_groups": {
+    "young": [
+      0,
+      45
+    ],
+    "middle": [
+      45,
+      65
+    ],
+    "old": [
+      65,
+      999
+    ]
+  },
+  "features": [
+    "albumin",
+    "creatinine",
+    "glucose",
+    "alp",
+    "crp_mgl",
+    "mcv",
+    "rdw",
+    "wbc",
+    "lymph_pct"
+  ],
+  "log_features": [
+    "crp_mgl",
+    "glucose",
+    "wbc",
+    "alp"
+  ],
+  "target": "phenoage",
+  "group_results": {
+    "young": {
+      "R2": 0.6711,
+      "MAE": 5.2976,
+      "CV_R2": 0.6387,
+      "n_train": 3636,
+      "n_test": 949,
+      "age_range": [
+        0,
+        45
+      ]
+    },
+    "middle": {
+      "R2": 0.6981,
+      "MAE": 4.07,
+      "CV_R2": 0.6983,
+      "n_train": 2310,
+      "n_test": 550,
+      "age_range": [
+        45,
+        65
+      ]
+    },
+    "old": {
+      "R2": 0.7121,
+      "MAE": 4.2057,
+      "CV_R2": 0.7011,
+      "n_train": 1599,
+      "n_test": 388,
+      "age_range": [
+        65,
+        999
+      ]
+    }
+  },
+  "ensemble": {
+    "R2": 0.9271,
+    "MAE": 4.7153
+  },
+  "baseline": {
+    "R2": 0.6345,
+    "MAE": 10.4337
+  }
+}

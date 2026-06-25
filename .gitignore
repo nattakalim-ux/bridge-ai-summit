@@ -1,23 +1,10 @@
-# Trained model binaries (regeneratable by running training scripts)
-Model/*.pkl
-
-# Plots (regeneratable)
-Model/*.png
-
 # Python
 __pycache__/
 *.pyc
 *.pyo
 .DS_Store
 
-# =============================================================================
-# ADDITIONAL PROJECT ALIGNMENT (ADDED FOR PHASES 3-8)
-# =============================================================================
-# Specific extensions for generated datasets and backup files
-*.parquet
-*.feather
-*.pkl
-*.joblib
+# Temp files
 *.bak
 *.tmp
 

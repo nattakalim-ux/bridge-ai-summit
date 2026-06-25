@@ -1,0 +1,24 @@
+{
+  "name": "mdcu",
+  "version": "1.0.0",
+  "description": "โปรเจกต์นี้เป็นการพัฒนาระบบทำนาย **Mortality Risk** (ความเสี่ยงในการเสียชีวิต) โดยประยุกต์ใช้โมเดล Machine Learning (XGBoost) เพื่อสร้างแบบจำลองที่มีความแม่นยำและยืดหยุ่นสูงกว่าแบบจำลองทางสถิติดั้งเดิม โดยอ้างอิงพื้นฐานตัวแปรชีวภาพ (Biomarkers) 9 ชนิดตามแนวคิด **PhenoAge** ของ Levine et al. (2018) เพื่อประเมินสถานะสุขภาพและพยากรณ์ความเสี่ยงในเชิงลึก",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nattakalim-ux/bridge-ai-summit.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nattakalim-ux/bridge-ai-summit/issues"
+  },
+  "homepage": "https://github.com/nattakalim-ux/bridge-ai-summit#readme",
+  "dependencies": {
+    "pptxgenjs": "^4.0.1"
+  }
+}
