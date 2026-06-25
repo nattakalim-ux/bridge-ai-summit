@@ -1,18 +1,8 @@
-# Raw NHANES data (large binaries — re-download from CDC)
-Data/nhanes_raw/
-Data/nhanes_2013_2014/
-
-# Old datasets not needed for Phase 2
-Data/mortality_nhanes_complete.csv
-Data/phenoage_nhanes_complete.csv
-Data/NHANES_2007_2008_MORT.dat
-
 # Trained model binaries (regeneratable by running training scripts)
 Model/*.pkl
 
 # Plots (regeneratable)
 Model/*.png
-Data/*.png
 
 # Python
 __pycache__/
@@ -23,14 +13,7 @@ __pycache__/
 # =============================================================================
 # ADDITIONAL PROJECT ALIGNMENT (ADDED FOR PHASES 3-8)
 # =============================================================================
-# Block the entire Data folder overhead from tracking while keeping source configs
-Data/*
-
 # Specific extensions for generated datasets and backup files
-*.csv
-*.xlsx
-*.xls
-*.xpt
 *.parquet
 *.feather
 *.pkl
